@@ -22,10 +22,11 @@ import static org.apache.dolphinscheduler.common.Constants.RESOURCE_UPLOAD_PATH;
 import org.apache.dolphinscheduler.common.Constants;
 import org.apache.dolphinscheduler.common.enums.ExecutionStatus;
 import org.apache.dolphinscheduler.common.enums.ResUploadType;
-import org.apache.dolphinscheduler.common.enums.ResourceType;
 import org.apache.dolphinscheduler.common.exception.BaseException;
+import org.apache.dolphinscheduler.spi.enums.ResourceType;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
@@ -72,6 +73,7 @@ public class HadoopUtils implements Closeable {
     public static final String rmHaIds = PropertyUtils.getString(Constants.YARN_RESOURCEMANAGER_HA_RM_IDS);
     public static final String appAddress = PropertyUtils.getString(Constants.YARN_APPLICATION_STATUS_ADDRESS);
     public static final String jobHistoryAddress = PropertyUtils.getString(Constants.YARN_JOB_HISTORY_STATUS_ADDRESS);
+    public static final int HADOOP_RESOURCE_MANAGER_HTTP_ADDRESS_PORT_VALUE = PropertyUtils.getInt(Constants.HADOOP_RESOURCE_MANAGER_HTTPADDRESS_PORT, 8088);
 
     private static final String HADOOP_UTILS_KEY = "HADOOP_UTILS_KEY";
 
@@ -127,14 +129,8 @@ public class HadoopUtils implements Closeable {
             ResUploadType resUploadType = ResUploadType.valueOf(resourceStorageType);
 
             if (resUploadType == ResUploadType.HDFS) {
-                if (PropertyUtils.getBoolean(Constants.HADOOP_SECURITY_AUTHENTICATION_STARTUP_STATE, false)) {
-                    System.setProperty(Constants.JAVA_SECURITY_KRB5_CONF,
-                            PropertyUtils.getString(Constants.JAVA_SECURITY_KRB5_CONF_PATH));
-                    configuration.set(Constants.HADOOP_SECURITY_AUTHENTICATION, "kerberos");
+                if (CommonUtils.loadKerberosConf(configuration)) {
                     hdfsUser = "";
-                    UserGroupInformation.setConfiguration(configuration);
-                    UserGroupInformation.loginUserFromKeytab(PropertyUtils.getString(Constants.LOGIN_USER_KEY_TAB_USERNAME),
-                            PropertyUtils.getString(Constants.LOGIN_USER_KEY_TAB_PATH));
                 }
 
                 String defaultFS = configuration.get(Constants.FS_DEFAULTFS);
@@ -156,20 +152,15 @@ public class HadoopUtils implements Closeable {
                     logger.info("get property:{} -> {}, from core-site.xml hdfs-site.xml ", Constants.FS_DEFAULTFS, defaultFS);
                 }
 
-                if (fs == null) {
-                    if (StringUtils.isNotEmpty(hdfsUser)) {
-                        UserGroupInformation ugi = UserGroupInformation.createRemoteUser(hdfsUser);
-                        ugi.doAs(new PrivilegedExceptionAction<Boolean>() {
-                            @Override
-                            public Boolean run() throws Exception {
-                                fs = FileSystem.get(configuration);
-                                return true;
-                            }
-                        });
-                    } else {
-                        logger.warn("hdfs.root.user is not set value!");
+                if (StringUtils.isNotEmpty(hdfsUser)) {
+                    UserGroupInformation ugi = UserGroupInformation.createRemoteUser(hdfsUser);
+                    ugi.doAs((PrivilegedExceptionAction<Boolean>) () -> {
                         fs = FileSystem.get(configuration);
-                    }
+                        return true;
+                    });
+                } else {
+                    logger.warn("hdfs.root.user is not set value!");
+                    fs = FileSystem.get(configuration);
                 }
             } else if (resUploadType == ResUploadType.S3) {
                 System.setProperty(Constants.AWS_S3_V4, Constants.STRING_TRUE);
@@ -190,6 +181,13 @@ public class HadoopUtils implements Closeable {
      */
     public Configuration getConfiguration() {
         return configuration;
+    }
+
+    /**
+     * @return DefaultFS
+     */
+    public String getDefaultFS() {
+        return getConfiguration().get(Constants.FS_DEFAULTFS);
     }
 
     /**
@@ -214,8 +212,7 @@ public class HadoopUtils implements Closeable {
         if (logger.isDebugEnabled()) {
             logger.debug("yarn application url:{}, applicationId:{}", appUrl, applicationId);
         }
-        String activeResourceManagerPort = String.valueOf(PropertyUtils.getInt(Constants.HADOOP_RESOURCE_MANAGER_HTTPADDRESS_PORT, 8088));
-        return String.format(appUrl, activeResourceManagerPort, applicationId);
+        return String.format(appUrl, HADOOP_RESOURCE_MANAGER_HTTP_ADDRESS_PORT_VALUE, applicationId);
     }
 
     public String getJobHistoryUrl(String applicationId) {
@@ -456,6 +453,7 @@ public class HadoopUtils implements Closeable {
             case Constants.ACCEPTED:
                 return ExecutionStatus.SUBMITTED_SUCCESS;
             case Constants.SUCCEEDED:
+            case Constants.ENDED:
                 return ExecutionStatus.SUCCESS;
             case Constants.NEW:
             case Constants.NEW_SAVING:
@@ -594,7 +592,7 @@ public class HadoopUtils implements Closeable {
     public static String getAppAddress(String appAddress, String rmHa) {
 
         //get active ResourceManager
-        String activeRM = YarnHAAdminUtils.getAcitveRMName(rmHa);
+        String activeRM = YarnHAAdminUtils.getActiveRMName(rmHa);
 
         if (StringUtils.isEmpty(activeRM)) {
             return null;
@@ -638,13 +636,11 @@ public class HadoopUtils implements Closeable {
         /**
          * get active resourcemanager
          */
-        public static String getAcitveRMName(String rmIds) {
+        public static String getActiveRMName(String rmIds) {
 
             String[] rmIdArr = rmIds.split(Constants.COMMA);
 
-            int activeResourceManagerPort = PropertyUtils.getInt(Constants.HADOOP_RESOURCE_MANAGER_HTTPADDRESS_PORT, 8088);
-
-            String yarnUrl = "http://%s:" + activeResourceManagerPort + "/ws/v1/cluster/info";
+            String yarnUrl = "http://%s:" + HADOOP_RESOURCE_MANAGER_HTTP_ADDRESS_PORT_VALUE + "/ws/v1/cluster/info";
 
             try {
 

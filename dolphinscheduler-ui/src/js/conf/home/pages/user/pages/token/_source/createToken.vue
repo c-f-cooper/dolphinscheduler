@@ -16,6 +16,8 @@
  */
 <template>
   <m-popover
+          okId="btnSubmit"
+          cancelId="btnCancel"
           ref="popover"
           :ok-text="item ? $t('Edit') : $t('Submit')"
           @ok="_ok"
@@ -59,7 +61,7 @@
                     v-model="token"
                     :placeholder="$t('Please enter token')">
             </el-input>
-            <el-button size="small" @click="_generateToken" :loading="tokenLoading">{{$t('Generate token')}}</el-button>
+            <el-button id="btnGenerateToken" size="small" @click="_generateToken" :loading="tokenLoading">{{$t('Generate token')}}</el-button>
           </template>
         </m-list-box-f>
       </div>
@@ -106,6 +108,10 @@
       _verification () {
         if (!this.token) {
           this.$message.warning(`${i18n.$t('Please generate token')}`)
+          return false
+        }
+        if (!this.expireTime) {
+          this.$message.warning(`${i18n.$t('Please Select token')}`)
           return false
         }
         return true

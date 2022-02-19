@@ -17,9 +17,9 @@
 <template>
   <div class="list-model">
     <div class="table-box">
-      <el-table :data="list" size="mini" style="width: 100%">
+      <el-table :data="list" size="mini" style="width: 100%" row-class-name="items-task-instances">
         <el-table-column prop="id" :label="$t('#')" width="50"></el-table-column>
-        <el-table-column prop="name" :label="$t('Name')"></el-table-column>
+        <el-table-column prop="name" :label="$t('Name')" class-name="task-instance-name"></el-table-column>
         <el-table-column :label="$t('Process Instance')" min-width="200">
           <template slot-scope="scope">
             <el-popover trigger="hover" placement="top">
@@ -32,7 +32,7 @@
         </el-table-column>
         <el-table-column prop="executorName" :label="$t('Executor')"></el-table-column>
         <el-table-column prop="taskType" :label="$t('Node Type')"></el-table-column>
-        <el-table-column :label="$t('State')" width="50">
+        <el-table-column :label="$t('State')" width="50" class-name="task-instance-state">
           <template slot-scope="scope">
             <span v-html="_rtState(scope.row.state)" style="cursor: pointer;"></span>
           </template>
@@ -59,6 +59,12 @@
           </template>
         </el-table-column>
         <el-table-column prop="retryTimes" :label="$t('Retry Count')"></el-table-column>
+        <el-table-column :label="$t('Dry-run flag')" width="100">
+          <template slot-scope="scope">
+            <span v-if="scope.row.dryRun == 1">YES</span>
+            <span v-else>NO</span>
+          </template>
+        </el-table-column>
         <el-table-column :label="$t('host')" min-width="210">
           <template slot-scope="scope">
             <span>{{scope.row.host | filterNull}}</span>
@@ -84,15 +90,15 @@
       :show-close="false"
       :visible.sync="logDialog"
       width="auto">
-      <m-log :key="logId" :item="item" :source="source" :logId="logId" @ok="ok" @close="close"></m-log>
+      <m-log :key="taskInstanceId" :item="item" :source="source" :taskInstanceId="taskInstanceId" @close="close"></m-log>
     </el-dialog>
   </div>
 </template>
 <script>
+  import { mapActions, mapState } from 'vuex'
   import Permissions from '@/module/permissions'
   import mLog from '@/conf/home/pages/dag/_source/formModel/log'
   import { tasksState } from '@/conf/home/pages/dag/_source/config'
-  import { mapActions } from 'vuex'
 
   export default {
     name: 'list',
@@ -104,7 +110,7 @@
         logDialog: false,
         item: {},
         source: '',
-        logId: null
+        taskInstanceId: null
       }
     },
     props: {
@@ -121,10 +127,9 @@
       _refreshLog (item) {
         this.item = item
         this.source = 'list'
-        this.logId = item.id
+        this.taskInstanceId = item.id
         this.logDialog = true
       },
-      ok () {},
       close () {
         this.logDialog = false
       },
@@ -144,7 +149,7 @@
         this.$emit('on-update')
       },
       _go (item) {
-        this.$router.push({ path: `/projects/instance/list/${item.processInstanceId}` })
+        this.$router.push({ path: `/projects/${this.projectCode}/instance/list/${item.processInstanceId}` })
       }
     },
     watch: {
@@ -159,6 +164,9 @@
     },
     mounted () {
       this.list = this.taskInstanceList
+    },
+    computed: {
+      ...mapState('dag', ['projectCode'])
     },
     components: { mLog }
   }

@@ -62,6 +62,21 @@
       </div>
     </div>
     <div class="clearfix list">
+      <div class="text">
+        {{$t('Timezone')}}
+      </div>
+      <div class="cont">
+        <el-select v-model=timezoneId filterable placeholder="Timezone">
+          <el-option
+            v-for="item in availableTimezoneIDList"
+            :key="item"
+            :label="item"
+            :value="item">
+          </el-option>
+        </el-select>
+      </div>
+    </div>
+    <div class="clearfix list">
       <div style = "padding-left: 150px;">{{$t('Next five execution times')}}</div>
       <ul style = "padding-left: 150px;">
         <li v-for="(time,i) in previewTimes" :key='i'>{{time}}</li>
@@ -115,6 +130,14 @@
     </div>
     <div class="clearfix list">
       <div class="text">
+        {{$t('Environment Name')}}
+      </div>
+      <div class="cont">
+        <m-related-environment v-model="environmentCode" :workerGroup="workerGroup" v-on:environmentCodeEvent="_onUpdateEnvironmentCode"></m-related-environment>
+      </div>
+    </div>
+    <div class="clearfix list">
+      <div class="text">
         {{$t('Alarm group')}}
       </div>
       <div class="cont">
@@ -139,11 +162,12 @@
     </div>
     <div class="submit">
       <el-button type="text" size="small" @click="close()"> {{$t('Cancel')}} </el-button>
-      <el-button type="primary" size="small" round :loading="spinnerLoading" @click="ok()">{{spinnerLoading ? 'Loading...' : (timingData.item.crontab ? $t('Edit') : $t('Create'))}} </el-button>
+      <el-button type="primary" size="small" round :loading="spinnerLoading" @click="ok()">{{spinnerLoading ? $t('Loading...') : (timingData.item.crontab ? $t('Edit') : $t('Create'))}} </el-button>
     </div>
   </div>
 </template>
 <script>
+  import moment from 'moment-timezone'
   import i18n from '@/module/i18n'
   import store from '@/conf/home/store'
   import { warningTypeList } from './util'
@@ -151,6 +175,7 @@
   import { formatDate } from '@/module/filter/filter'
   import mPriority from '@/module/components/priority/priority'
   import mWorkerGroups from '@/conf/home/pages/dag/_source/formModel/_source/workerGroups'
+  import mRelatedEnvironment from '@/conf/home/pages/dag/_source/formModel/_source/relatedEnvironment'
 
   export default {
     name: 'timing-process',
@@ -160,16 +185,19 @@
         processDefinitionId: 0,
         failureStrategy: 'CONTINUE',
         warningTypeList: warningTypeList,
+        availableTimezoneIDList: moment.tz.names(),
         warningType: 'NONE',
         notifyGroupList: [],
         warningGroupId: '',
         spinnerLoading: false,
         scheduleTime: '',
         crontab: '0 0 * * * ? *',
+        timezoneId: moment.tz.guess(),
         cronPopover: false,
         i18n: i18n.globalScope.LOCALE,
         processInstancePriority: 'MEDIUM',
         workerGroup: '',
+        environmentCode: '',
         previewTimes: []
       }
     },
@@ -197,6 +225,9 @@
         }
         return true
       },
+      _onUpdateEnvironmentCode (o) {
+        this.environmentCode = o
+      },
       _timing () {
         if (this._verification()) {
           let api = ''
@@ -204,13 +235,15 @@
             schedule: JSON.stringify({
               startTime: this.scheduleTime[0],
               endTime: this.scheduleTime[1],
-              crontab: this.crontab
+              crontab: this.crontab,
+              timezoneId: this.timezoneId
             }),
             failureStrategy: this.failureStrategy,
             warningType: this.warningType,
             processInstancePriority: this.processInstancePriority,
             warningGroupId: this.warningGroupId === '' ? 0 : this.warningGroupId,
-            workerGroup: this.workerGroup
+            workerGroup: this.workerGroup,
+            environmentCode: this.environmentCode
           }
           let msg = ''
 
@@ -221,7 +254,7 @@
             msg = `${i18n.$t('Edit')}${i18n.$t('Success')},${i18n.$t('Please go online')}`
           } else {
             api = 'dag/createSchedule'
-            searchParams.processDefinitionId = this.timingData.item.id
+            searchParams.processDefinitionCode = this.timingData.item.code
             msg = `${i18n.$t('Create')}${i18n.$t('Success')}`
           }
 
@@ -294,6 +327,7 @@
       } else {
         this.workerGroup = this.timingData.item.workerGroup
       }
+      this.environmentCode = this.timingData.item.environmentCode
       if (this.timingData.item.crontab !== null) {
         this.crontab = this.timingData.item.crontab
       }
@@ -323,13 +357,14 @@
       if (this.timingData.item.crontab) {
         this.crontab = item.crontab
         this.scheduleTime = [formatDate(item.startTime), formatDate(item.endTime)]
+        this.timezoneId = item.timezoneId === null ? moment.tz.guess() : item.timezoneId
         this.failureStrategy = item.failureStrategy
         this.warningType = item.warningType
         this.processInstancePriority = item.processInstancePriority
         this._getNotifyGroupList().then(() => {
           this.$nextTick(() => {
             // let list = _.filter(this.notifyGroupList, v => v.id === item.warningGroupId)
-            this.warningGroupId = item.warningGroupId
+            this.warningGroupId = item.warningGroupId === 0 ? '' : item.warningGroupId
           })
         }).catch(() => { this.warningGroupId = '' })
       } else {
@@ -340,7 +375,7 @@
         }).catch(() => { this.warningGroupId = '' })
       }
     },
-    components: { vCrontab, mPriority, mWorkerGroups }
+    components: { vCrontab, mPriority, mWorkerGroups, mRelatedEnvironment }
   }
 </script>
 

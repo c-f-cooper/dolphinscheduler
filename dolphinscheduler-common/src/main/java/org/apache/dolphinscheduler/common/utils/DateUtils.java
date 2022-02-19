@@ -19,20 +19,29 @@ package org.apache.dolphinscheduler.common.utils;
 
 import org.apache.dolphinscheduler.common.Constants;
 
+import org.apache.commons.lang.StringUtils;
+
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.TimeZone;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * date utils
- */
-public class DateUtils {
+public final class DateUtils {
+
+    static final long C0 = 1L;
+    static final long C1 = C0 * 1000L;
+    static final long C2 = C1 * 1000L;
+    static final long C3 = C2 * 1000L;
+    static final long C4 = C3 * 60L;
+    static final long C5 = C4 * 60L;
+    static final long C6 = C5 * 24L;
 
     private static final Logger logger = LoggerFactory.getLogger(DateUtils.class);
 
@@ -83,7 +92,7 @@ public class DateUtils {
     /**
      * get the formatted date string
      *
-     * @param date date
+     * @param date   date
      * @param format e.g. yyyy-MM-dd HH:mm:ss
      * @return date string
      */
@@ -95,7 +104,7 @@ public class DateUtils {
      * get the formatted date string
      *
      * @param localDateTime local data time
-     * @param format yyyy-MM-dd HH:mm:ss
+     * @param format        yyyy-MM-dd HH:mm:ss
      * @return date string
      */
     public static String format(LocalDateTime localDateTime, String format) {
@@ -115,7 +124,7 @@ public class DateUtils {
     /**
      * convert string to date and time
      *
-     * @param date date
+     * @param date   date
      * @param format format
      * @return date
      */
@@ -165,32 +174,10 @@ public class DateUtils {
     }
 
     /**
-     * get hours between two dates
-     *
-     * @param d1 date1
-     * @param d2 date2
-     * @return differ hours
-     */
-    public static long diffHours(Date d1, Date d2) {
-        return (long) Math.ceil(diffMin(d1, d2) / 60.0);
-    }
-
-    /**
-     * get minutes between two dates
-     *
-     * @param d1 date1
-     * @param d2 date2
-     * @return differ minutes
-     */
-    public static long diffMin(Date d1, Date d2) {
-        return (long) Math.ceil(differSec(d1, d2) / 60.0);
-    }
-
-    /**
      * get the date of the specified date in the days before and after
      *
      * @param date date
-     * @param day day
+     * @param day  day
      * @return the date of the specified date in the days before and after
      */
     public static Date getSomeDay(Date date, int day) {
@@ -216,7 +203,7 @@ public class DateUtils {
      * compare two dates
      *
      * @param future future date
-     * @param old old date
+     * @param old    old date
      * @return true if future time greater than old time
      */
     public static boolean compare(Date future, Date old) {
@@ -251,7 +238,6 @@ public class DateUtils {
     }
 
     /**
-     *
      * format time to duration
      *
      * @param d1 d1
@@ -343,7 +329,7 @@ public class DateUtils {
     /**
      * get some hour of day
      *
-     * @param date date
+     * @param date       date
      * @param offsetHour hours
      * @return some hour of day
      */
@@ -446,15 +432,15 @@ public class DateUtils {
      */
     public static Date getCurrentDate() {
         return DateUtils.parse(DateUtils.getCurrentTime(),
-                Constants.YYYY_MM_DD_HH_MM_SS);
+            Constants.YYYY_MM_DD_HH_MM_SS);
     }
 
     /**
      * get date
      *
-     * @param date date
+     * @param date          date
      * @param calendarField calendarField
-     * @param amount amount
+     * @param amount        amount
      * @return date
      */
     public static Date add(final Date date, final int calendarField, final int amount) {
@@ -471,7 +457,7 @@ public class DateUtils {
      * starting from the current time, get how many seconds are left before the target time.
      * targetTime = baseTime + intervalSeconds
      *
-     * @param baseTime base time
+     * @param baseTime        base time
      * @param intervalSeconds a period of time
      * @return the number of seconds
      */
@@ -492,44 +478,51 @@ public class DateUtils {
         return getCurrentTime(Constants.YYYYMMDDHHMMSSSSS);
     }
 
-    static final long C0 = 1L;
-    static final long C1 = C0 * 1000L;
-    static final long C2 = C1 * 1000L;
-    static final long C3 = C2 * 1000L;
-    static final long C4 = C3 * 60L;
-    static final long C5 = C4 * 60L;
-    static final long C6 = C5 * 24L;
+    /**
+     * transform date to target timezone date
+     * <p>e.g.
+     * <p> if input date is 2020-01-01 00:00:00 current timezone is CST
+     * <p>targetTimezoneId is MST
+     * <p>this method will return 2020-01-01 15:00:00
+     */
+    public static Date getTimezoneDate(Date date, String targetTimezoneId) {
+        if (StringUtils.isEmpty(targetTimezoneId)) {
+            return date;
+        }
+
+        String dateToString = dateToString(date);
+        LocalDateTime localDateTime = LocalDateTime.parse(dateToString, DateTimeFormatter.ofPattern(Constants.YYYY_MM_DD_HH_MM_SS));
+        ZonedDateTime zonedDateTime = ZonedDateTime.of(localDateTime, TimeZone.getTimeZone(targetTimezoneId).toZoneId());
+        return Date.from(zonedDateTime.toInstant());
+    }
+
+    /**
+     * get timezone by timezoneId
+     */
+    public static TimeZone getTimezone(String timezoneId) {
+        if (StringUtils.isEmpty(timezoneId)) {
+            return null;
+        }
+        return TimeZone.getTimeZone(timezoneId);
+    }
 
     /**
      * Time unit representing one thousandth of a second
      */
     public static class MILLISECONDS {
-
-        public static long toSeconds(long d) {
-            return d / (C3 / C2);
-        }
-
-        public static long toMinutes(long d) {
-            return d / (C4 / C2);
-        }
-
-        public static long toHours(long d)   {
-            return d / (C5 / C2);
-        }
-
-        public static long toDays(long d)    {
+        public static long toDays(long d) {
             return d / (C6 / C2);
         }
 
-        public static long toDurationSeconds(long d)   {
+        public static long toDurationSeconds(long d) {
             return (d % (C4 / C2)) / (C3 / C2);
         }
 
-        public static long toDurationMinutes(long d)   {
+        public static long toDurationMinutes(long d) {
             return (d % (C5 / C2)) / (C4 / C2);
         }
 
-        public static long toDurationHours(long d)   {
+        public static long toDurationHours(long d) {
             return (d % (C6 / C2)) / (C5 / C2);
         }
 
