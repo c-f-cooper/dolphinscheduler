@@ -51,12 +51,15 @@ doc = [
     "sphinx>=4.3",
     "sphinx_rtd_theme>=1.0",
     "sphinx-click>=3.0",
+    "sphinx-inline-tabs",
 ]
 
 test = [
     "pytest>=6.2",
     "freezegun>=1.1",
     "coverage>=6.1",
+    "pytest-cov>=3.0",
+    "docker>=5.0.3",
 ]
 
 style = [
@@ -64,6 +67,7 @@ style = [
     "flake8-docstrings>=1.6",
     "flake8-black>=0.2",
     "isort>=5.10",
+    "autoflake>=1.4",
 ]
 
 dev = style + test + doc + build
@@ -94,11 +98,9 @@ class CleanCommand(Command):
 
     def initialize_options(self) -> None:
         """Set default values for options."""
-        pass
 
     def finalize_options(self) -> None:
         """Set final values for options."""
-        pass
 
     def run(self) -> None:
         """Run and remove temporary files."""
@@ -144,7 +146,7 @@ setup(
     package_dir={"": "src"},
     include_package_data=True,
     package_data={
-        "examples": ["examples.tutorial.py"],
+        "pydolphinscheduler": ["core/default_config.yaml"],
     },
     platforms=["any"],
     classifiers=[

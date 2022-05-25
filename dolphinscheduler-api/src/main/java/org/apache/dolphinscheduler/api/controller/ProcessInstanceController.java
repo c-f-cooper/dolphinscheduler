@@ -34,19 +34,16 @@ import org.apache.dolphinscheduler.api.exceptions.ApiException;
 import org.apache.dolphinscheduler.api.service.ProcessInstanceService;
 import org.apache.dolphinscheduler.api.utils.Result;
 import org.apache.dolphinscheduler.common.Constants;
-import org.apache.dolphinscheduler.common.enums.ExecutionStatus;
-import org.apache.dolphinscheduler.common.enums.Flag;
 import org.apache.dolphinscheduler.common.utils.ParameterUtils;
 import org.apache.dolphinscheduler.dao.entity.ProcessInstance;
 import org.apache.dolphinscheduler.dao.entity.User;
+import org.apache.dolphinscheduler.plugin.task.api.enums.ExecutionStatus;
 
 import org.apache.commons.lang.StringUtils;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.text.MessageFormat;
+import java.util.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,7 +97,7 @@ public class ProcessInstanceController extends BaseController {
      */
     @ApiOperation(value = "queryProcessInstanceListPaging", notes = "QUERY_PROCESS_INSTANCE_LIST_NOTES")
     @ApiImplicitParams({
-        @ApiImplicitParam(name = "processDefiniteCode", value = "PROCESS_DEFINITION_CODE", dataType = "Long", example = "100"),
+        @ApiImplicitParam(name = "processDefineCode", value = "PROCESS_DEFINITION_CODE", dataType = "Long", example = "100"),
         @ApiImplicitParam(name = "searchVal", value = "SEARCH_VAL", type = "String"),
         @ApiImplicitParam(name = "executorName", value = "EXECUTOR_NAME", type = "String"),
         @ApiImplicitParam(name = "stateType", value = "EXECUTION_STATUS", type = "ExecutionStatus"),
@@ -383,7 +380,7 @@ public class ProcessInstanceController extends BaseController {
      */
     @ApiOperation(value = "batchDeleteProcessInstanceByIds", notes = "BATCH_DELETE_PROCESS_INSTANCE_BY_IDS_NOTES")
     @ApiImplicitParams({
-        @ApiImplicitParam(name = "projectName", value = "PROJECT_NAME", required = true, dataType = "String"),
+        @ApiImplicitParam(name = "projectCode", value = "PROJECT_CODE", required = true, dataType = "Int"),
         @ApiImplicitParam(name = "processInstanceIds", value = "PROCESS_INSTANCE_IDS", required = true, dataType = "String"),
     })
     @PostMapping(value = "/batch-delete")
@@ -397,23 +394,23 @@ public class ProcessInstanceController extends BaseController {
         Map<String, Object> result = new HashMap<>();
         List<String> deleteFailedIdList = new ArrayList<>();
         if (!StringUtils.isEmpty(processInstanceIds)) {
-            String[] processInstanceIdArray = processInstanceIds.split(",");
+            String[] processInstanceIdArray = processInstanceIds.split(Constants.COMMA);
 
             for (String strProcessInstanceId : processInstanceIdArray) {
                 int processInstanceId = Integer.parseInt(strProcessInstanceId);
                 try {
                     Map<String, Object> deleteResult = processInstanceService.deleteProcessInstanceById(loginUser, projectCode, processInstanceId);
                     if (!Status.SUCCESS.equals(deleteResult.get(Constants.STATUS))) {
-                        deleteFailedIdList.add(strProcessInstanceId);
+                        deleteFailedIdList.add((String) deleteResult.get(Constants.MSG));
                         logger.error((String) deleteResult.get(Constants.MSG));
                     }
                 } catch (Exception e) {
-                    deleteFailedIdList.add(strProcessInstanceId);
+                    deleteFailedIdList.add(MessageFormat.format(Status.PROCESS_INSTANCE_ERROR.getMsg(), strProcessInstanceId));
                 }
             }
         }
         if (!deleteFailedIdList.isEmpty()) {
-            putMsg(result, Status.BATCH_DELETE_PROCESS_INSTANCE_BY_IDS_ERROR, String.join(",", deleteFailedIdList));
+            putMsg(result, Status.BATCH_DELETE_PROCESS_INSTANCE_BY_IDS_ERROR, String.join("\n", deleteFailedIdList));
         } else {
             putMsg(result, Status.SUCCESS);
         }

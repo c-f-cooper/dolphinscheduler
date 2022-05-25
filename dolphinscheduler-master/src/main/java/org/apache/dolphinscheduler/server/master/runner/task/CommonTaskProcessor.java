@@ -18,7 +18,8 @@
 package org.apache.dolphinscheduler.server.master.runner.task;
 
 import org.apache.dolphinscheduler.common.Constants;
-import org.apache.dolphinscheduler.common.enums.ExecutionStatus;
+import org.apache.dolphinscheduler.plugin.task.api.TaskExecutionContext;
+import org.apache.dolphinscheduler.plugin.task.api.enums.ExecutionStatus;
 import org.apache.dolphinscheduler.remote.command.TaskKillRequestCommand;
 import org.apache.dolphinscheduler.remote.utils.Host;
 import org.apache.dolphinscheduler.server.master.dispatch.context.ExecutionContext;
@@ -29,7 +30,6 @@ import org.apache.dolphinscheduler.service.bean.SpringApplicationContext;
 import org.apache.dolphinscheduler.service.queue.TaskPriority;
 import org.apache.dolphinscheduler.service.queue.TaskPriorityQueue;
 import org.apache.dolphinscheduler.service.queue.TaskPriorityQueueImpl;
-import org.apache.dolphinscheduler.service.queue.entity.TaskExecutionContext;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -54,14 +54,14 @@ public class CommonTaskProcessor extends BaseTaskProcessor {
         if (this.taskInstance == null) {
             return false;
         }
-        this.setTaskExecutionLogger();
+
         int taskGroupId = taskInstance.getTaskGroupId();
         if (taskGroupId > 0) {
             boolean acquireTaskGroup = processService.acquireTaskGroup(taskInstance.getId(),
                     taskInstance.getName(),
                     taskGroupId,
                     taskInstance.getProcessInstanceId(),
-                    taskInstance.getTaskInstancePriority().getCode());
+                    taskInstance.getTaskGroupPriority());
             if (!acquireTaskGroup) {
                 logger.info("submit task name :{}, but the first time to try to acquire task group failed", taskInstance.getName());
                 return true;
@@ -114,9 +114,14 @@ public class CommonTaskProcessor extends BaseTaskProcessor {
 
             TaskPriority taskPriority = new TaskPriority(processInstance.getProcessInstancePriority().getCode(),
                     processInstance.getId(), taskInstance.getProcessInstancePriority().getCode(),
-                    taskInstance.getId(), org.apache.dolphinscheduler.common.Constants.DEFAULT_WORKER_GROUP);
+                    taskInstance.getId(), taskInstance.getTaskGroupPriority(), org.apache.dolphinscheduler.common.Constants.DEFAULT_WORKER_GROUP);
 
             TaskExecutionContext taskExecutionContext = getTaskExecutionContext(taskInstance);
+            if (taskExecutionContext == null) {
+                logger.error("task get taskExecutionContext fail: {}", taskInstance);
+                return false;
+            }
+
             taskPriority.setTaskExecutionContext(taskExecutionContext);
 
             taskUpdateQueue.put(taskPriority);

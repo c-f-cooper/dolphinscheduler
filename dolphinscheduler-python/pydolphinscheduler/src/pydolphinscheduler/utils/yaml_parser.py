@@ -59,6 +59,7 @@ class YamlParser:
     """
 
     def __init__(self, content: str, delimiter: Optional[str] = "."):
+        self._content = content
         self.src_parser = content
         self._delimiter = delimiter
 
@@ -145,21 +146,7 @@ class YamlParser:
         """Get value by key, is call ``__getitem__``."""
         return self[key]
 
-    def get_int(self, key: str) -> int:
-        """Get value and covert it to int."""
-        return int(self.get(key))
-
-    def get_bool(self, key: str) -> bool:
-        """Get value and covert it to boolean."""
-        val = self.get(key)
-        if isinstance(val, str):
-            return val.lower() in {"true", "t"}
-        elif isinstance(val, int):
-            return val != 0
-        else:
-            return val
-
-    def to_string(self) -> str:
+    def __str__(self) -> str:
         """Transfer :class:`YamlParser` to string object.
 
         It is useful when users want to output the :class:`YamlParser` object they change just now.
@@ -167,3 +154,6 @@ class YamlParser:
         buf = io.StringIO()
         self._yaml.dump(self.src_parser, buf)
         return buf.getvalue()
+
+    def __repr__(self) -> str:
+        return f"YamlParser({str(self)})"
