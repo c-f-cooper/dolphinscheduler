@@ -16,6 +16,7 @@
  */
 
 import { useFlink } from './use-flink'
+import { useFlinkStream } from './use-flink-stream'
 import { useShell } from './use-shell'
 import { useSubProcess } from './use-sub-process'
 import { usePigeon } from './use-pigeon'
@@ -37,6 +38,16 @@ import { useZeppelin } from './use-zeppelin'
 import { useK8s } from './use-k8s'
 import { useJupyter } from './use-jupyter'
 import { useMlflow } from './use-mlflow'
+import { useOpenmldb } from './use-openmldb'
+import { useDvc } from './use-dvc'
+import { useJava } from './use-java'
+import { useDinky } from './use-dinky'
+import { userSagemaker } from './use-sagemaker'
+import { useChunjun } from './use-chunjun'
+import { usePytorch } from './use-pytorch'
+import { useHiveCli } from './use-hive-cli'
+import { useDms } from './use-dms'
+import {useDatasync} from "./use-datasync";
 
 export default {
   SHELL: useShell,
@@ -60,5 +71,16 @@ export default {
   ZEPPELIN: useZeppelin,
   K8S: useK8s,
   JUPYTER: useJupyter,
-  MLFLOW: useMlflow
+  MLFLOW: useMlflow,
+  OPENMLDB: useOpenmldb,
+  DVC: useDvc,
+  DINKY: useDinky,
+  SAGEMAKER: userSagemaker,
+  CHUNJUN: useChunjun,
+  FLINK_STREAM: useFlinkStream,
+  JAVA: useJava,
+  PYTORCH: usePytorch,
+  HIVECLI: useHiveCli,
+  DMS: useDms,
+  DATASYNC: useDatasync
 }
